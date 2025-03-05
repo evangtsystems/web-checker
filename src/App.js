@@ -52,12 +52,14 @@ const websitesToCheck = [
 function App() {
     const [statuses, setStatuses] = useState({});
 
+    const API_URL = "https://your-backend.onrender.com"; // Replace with your actual backend URL
+
     const checkWebsites = async () => {
       let newStatuses = {};
 
       for (let site of websitesToCheck) {
           try {
-              const response = await axios.get(`http://localhost:5000/check-site?url=${encodeURIComponent(site.url)}`);
+            const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
 
               if (response.data.status === "Up") {
                   newStatuses[site.name] = { status: "Up", code: response.data.code };
