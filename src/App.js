@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { sendEmail } from "./utils/emailUtils";
+import { Container, Table, Button, Spinner } from "react-bootstrap";
+import { motion } from "framer-motion";
 
 const websitesToCheck = [
-    // All websites provided in images and messages
     { name: "Car Albania", url: "https://caralbania.com" },
     { name: "Villa Sunmare", url: "https://villasunmare.com" },
     { name: "GS Tourist Centre", url: "https://gstouristcentre.gr" },
@@ -39,58 +39,123 @@ const websitesToCheck = [
     { name: "Corfu Delicatessen", url: "https://corfudelicatessen.com" },
     { name: "Autoplan Corfu", url: "https://autoplancorfu.gr" },
     { name: "Golden Home Corfu", url: "https://goldenhomecorfu.com" },
-    { name: "Holiday Sweet Memories", url: "https://holidaysweetmemories.com" },
-    { name: "GT Systems", url: "https://gtsystems.gr" },
-    { name: "WiFi Hotspot", url: "https://wifihotspot.gr" },
-    { name: "Villa Panorea", url: "https://villapanorea.com" },
-    { name: "Corfu South", url: "https://corfu-south.gr" },
-    { name: "Corfu VIP", url: "https://corfuvip.gr" },
-    { name: "GT Systems EU", url: "https://gtsystems.eu" },
-    { name: "Holiday Sweet Memories GR", url: "https://holidaysweetmemories.gr" }
+    { name: "Holiday Sweet Memories", url: "https://holidaysweetmemories.com" }
 ];
 
 function App() {
     const [statuses, setStatuses] = useState({});
-
-    const API_URL = "https://web-checker-slsb.onrender.com"; // Replace with your actual backend URL
+    const [loading, setLoading] = useState(false);
+    const API_URL = "https://web-checker-slsb.onrender.com";
 
     const checkWebsites = async () => {
-      let newStatuses = {};
+        setLoading(true); 
+        let newStatuses = {};
+        for (let i = 0; i < websitesToCheck.length; i++) {
+            const site = websitesToCheck[i];
+            try {
+                const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
+                newStatuses[site.name] = response.data.status === "Up" 
+                    ? { status: "✅ Online", code: response.data.code } 
+                    : { status: "❌ Down", code: response.data.error || "No Response" };
+            } catch (error) {
+                newStatuses[site.name] = { status: "⚠️ Error", code: error.message };
+            }
 
-      for (let site of websitesToCheck) {
-          try {
-            const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
+            setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
+            await new Promise((resolve) => setTimeout(resolve, 300)); 
+        }
+        setLoading(false);
+    };
 
-              if (response.data.status === "Up") {
-                  newStatuses[site.name] = { status: "Up", code: response.data.code };
-              } else {
-                  newStatuses[site.name] = { status: "Down or Blocked", code: response.data.error || "No Response" };
-              }
-          } catch (error) {
-              newStatuses[site.name] = { status: "Error", code: error.message };
-          }
-      }
+    useEffect(() => {
+        checkWebsites();
+    }, []);
 
-      setStatuses(newStatuses);
-  };
+    return (
+        <Container className="d-flex flex-column align-items-center justify-content-center min-vh-100" 
+            style={{ backgroundColor: "#add8e6", padding: "20px", textAlign: "center" }}>
+            
+            <motion.h1 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                transition={{ duration: 1 }}
+            >
+                🌐 Website Status Checker
+            </motion.h1>
+            
+            <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="mb-3"
+            >
+                <Button onClick={checkWebsites} variant="primary" size="lg" disabled={loading}>
+                    {loading ? (
+                        <>
+                            <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                            <strong style={{ fontSize: "1.6rem", marginLeft: "8px", color: "#004080" }}>Checking...</strong>
+                        </>
+                    ) : (
+                        "🔄 Refresh Status"
+                    )}
+                </Button>
+            </motion.div>
 
-  useEffect(() => {
-      checkWebsites();
-  }, []);
+            {loading && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="d-flex flex-column align-items-center mt-3"
+                >
+                    <Spinner animation="border" variant="primary" role="status" style={{ width: "3rem", height: "3rem" }} />
+                    <p className="mt-2" style={{ fontSize: "1.6rem", fontWeight: "bold", color: "#004080" }}>Checking website statuses...</p>
+                </motion.div>
+            )}
 
-  return (
-      <div style={{ textAlign: "center", padding: "20px" }}>
-          <h1>Website Status Checker</h1>
-          <ul>
-              {Object.entries(statuses).map(([site, info]) => (
-                  <li key={site}>
-                      <strong>{site}:</strong> {info.status} (Code: {info.code})
-                  </li>
-              ))}
-          </ul>
-          <button onClick={checkWebsites}>Check Now</button>
-      </div>
-  );
+            {!loading && (
+                <div className="d-flex justify-content-center">
+                    <Table 
+                        striped 
+                        bordered 
+                        hover 
+                        responsive 
+                        className="shadow-lg" 
+                        style={{ maxWidth: "80%", backgroundColor: "#ffffff", textAlign: "center", margin: "auto" }}
+                    >
+                        <thead>
+                            <tr className="text-center">
+                                <th className="text-center">Website</th>
+                                <th className="text-center">Status</th>
+                                <th className="text-center">Response Code</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Object.entries(statuses).map(([site, info], index) => (
+                                <motion.tr
+                                    key={site}
+                                    initial={{ opacity: 0, x: -50 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.4, delay: index * 0.2 }}
+                                    className="text-center"
+                                >
+                                    <td className="text-center">
+                                        <a href={websitesToCheck.find(w => w.name === site)?.url} 
+                                           target="_blank" 
+                                           rel="noopener noreferrer">
+                                            {site}
+                                        </a>
+                                    </td>
+                                    <td className="text-center">{info.status}</td>
+                                    <td className="text-center">{info.code}</td>
+                                </motion.tr>
+                            ))}
+                        </tbody>
+                    </Table>
+                </div>
+            )}
+        </Container>
+    );
 }
 
 export default App;
