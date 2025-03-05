@@ -52,7 +52,7 @@ const websitesToCheck = [
 function App() {
     const [statuses, setStatuses] = useState({});
 
-    const API_URL = "https://your-backend.onrender.com"; // Replace with your actual backend URL
+    const API_URL = "https://web-checker-slsb.onrender.com"; // Replace with your actual backend URL
 
     const checkWebsites = async () => {
       let newStatuses = {};
