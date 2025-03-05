@@ -24,6 +24,11 @@ app.get("/check-site", async (req, res) => {
     }
 });
 
+app.get("/", (req, res) => {
+    res.send("✅ Website Monitor Backend is Running!");
+});
+
+
 app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);
 });
