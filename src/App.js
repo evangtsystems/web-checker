@@ -50,6 +50,26 @@ function App() {
     
     
 
+    const detectBitdefenderBlock = async (siteUrl) => {
+        try {
+            const response = await axios.get(siteUrl, { timeout: 5000 });
+    
+            // ✅ If Bitdefender blocked it, its message is inside the HTML body
+            if (
+                response.data.toLowerCase().includes("bitdefender endpoint security tools blocked this page") ||
+                response.data.toLowerCase().includes("trojan.generickd")
+            ) {
+                console.warn(`🚨 Bitdefender Blocked: ${siteUrl}`);
+                return true;
+            }
+    
+            return false; // Site is fine
+        } catch (error) {
+            console.warn(`⚠️ Failed to check Bitdefender block: ${siteUrl}`, error.message);
+            return false; // Default to false if check fails
+        }
+    };
+    
     const checkWebsites = async () => {
         setLoading(true);
         let newStatuses = {};
@@ -63,27 +83,22 @@ function App() {
                 const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
                 console.log(`✅ Response for ${site.url}:`, response.data);
     
-                // ✅ If site is UP, check for Bitdefender malware warning
                 if (response.data.status === "Up") {
-                    if (
-                        response.data.error &&
-                        (response.data.error.toLowerCase().includes("bitdefender") ||
-                         response.data.error.toLowerCase().includes("malware"))
-                    ) {
-                        // ❌ Blocked by Bitdefender
+                    // 🔍 Extra check for Bitdefender block
+                    const isBlockedByBitdefender = await detectBitdefenderBlock(site.url);
+    
+                    if (isBlockedByBitdefender) {
                         newStatuses[site.name] = {
                             status: "❌ Blocked (Bitdefender detected)",
-                            code: response.data.error || "No Response",
+                            code: "Bitdefender Malware Warning",
                         };
                     } else {
-                        // ✅ Online without issues
                         newStatuses[site.name] = {
                             status: "✅ Online",
                             code: response.data.code,
                         };
                     }
                 } else {
-                    // ❌ Site is DOWN
                     newStatuses[site.name] = {
                         status: "❌ Down",
                         code: response.data.error || "No Response",
@@ -92,25 +107,13 @@ function App() {
             } catch (error) {
                 console.error(`🚨 Error checking ${site.url}:`, error.response?.status, error.response?.data || error.message);
     
-                // ✅ Ignore generic network errors, only report Bitdefender
-                if (
-                    error.message.toLowerCase().includes("bitdefender") ||
-                    error.message.toLowerCase().includes("malware")
-                ) {
-                    newStatuses[site.name] = {
-                        status: "❌ Blocked (Bitdefender detected)",
-                        code: error.message,
-                    };
-                } else {
-                    // ✅ Do not mark as error if it's just a generic network issue
-                    newStatuses[site.name] = {
-                        status: "✅ Online (Unverified)",
-                        code: "No Bitdefender warning detected",
-                    };
-                }
+                newStatuses[site.name] = {
+                    status: "⚠️ Error",
+                    code: error.message,
+                };
             }
     
-            // ✅ Update the statuses for each website iteration
+            // ✅ Update statuses
             setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
     
             // ⏳ Slight delay between checks
@@ -119,6 +122,7 @@ function App() {
     
         setLoading(false);
     };
+    
 
     return (
         <Container className="d-flex flex-column align-items-center justify-content-center min-vh-100" 
