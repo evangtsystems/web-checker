@@ -60,63 +60,66 @@ function App() {
       const checkWebsites = async () => {
         setLoading(true);
         let newStatuses = {};
+    
         for (let i = 0; i < websitesToCheck.length; i++) {
-          const site = websitesToCheck[i];
-          try {
+            const site = websitesToCheck[i];
             console.log(`📢 Checking site: ${site.url} → Requesting: ${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
-try {
-  const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
-  console.log(`✅ Response for ${site.url}:`, response.data);
-} catch (error) {
-  console.error(`🚨 Error checking ${site.url}:`, error.response?.status, error.response?.data || error.message);
-}
-
-      
-            // If the site appears "Up"
-            if (response.data.status === "Up") {
-              // If there's an error indicating malware/blockage, perform an extra check
-              if (
-                response.data.error &&
-                (response.data.error.toLowerCase().includes("bitdefender") ||
-                 response.data.error.toLowerCase().includes("malware"))
-              ) {
-                const contactAccessible = await simulateContactUsTrial(site.url);
-                if (contactAccessible) {
-                  newStatuses[site.name] = {
-                    status: "✅ Online (Contact accessible)",
-                    code: response.data.code,
-                  };
+    
+            try {
+                // ✅ Declare response inside try block
+                const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
+                console.log(`✅ Response for ${site.url}:`, response.data);
+    
+                // If the site appears "Up"
+                if (response.data.status === "Up") {
+                    // If there's an error indicating malware/blockage, perform an extra check
+                    if (
+                        response.data.error &&
+                        (response.data.error.toLowerCase().includes("bitdefender") ||
+                            response.data.error.toLowerCase().includes("malware"))
+                    ) {
+                        const contactAccessible = await simulateContactUsTrial(site.url);
+                        if (contactAccessible) {
+                            newStatuses[site.name] = {
+                                status: "✅ Online (Contact accessible)",
+                                code: response.data.code,
+                            };
+                        } else {
+                            newStatuses[site.name] = {
+                                status: "❌ Blocked (Contact inaccessible)",
+                                code: response.data.error || "No Response",
+                            };
+                        }
+                    } else {
+                        newStatuses[site.name] = {
+                            status: "✅ Online",
+                            code: response.data.code,
+                        };
+                    }
                 } else {
-                  newStatuses[site.name] = {
-                    status: "❌ Blocked (Contact inaccessible)",
-                    code: response.data.error || "No Response",
-                  };
+                    newStatuses[site.name] = {
+                        status: "❌ Down",
+                        code: response.data.error || "No Response",
+                    };
                 }
-              } else {
+            } catch (error) {
+                console.error(`🚨 Error checking ${site.url}:`, error.response?.status, error.response?.data || error.message);
                 newStatuses[site.name] = {
-                  status: "✅ Online",
-                  code: response.data.code,
+                    status: "⚠️ Error",
+                    code: error.message,
                 };
-              }
-            } else {
-              newStatuses[site.name] = {
-                status: "❌ Down",
-                code: response.data.error || "No Response",
-              };
             }
-          } catch (error) {
-            newStatuses[site.name] = {
-              status: "⚠️ Error",
-              code: error.message,
-            };
-          }
-          // Update the statuses for each website iteration
-          setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
-          // Slight delay between checks
-          await new Promise((resolve) => setTimeout(resolve, 300));
+    
+            // Update the statuses for each website iteration
+            setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
+    
+            // Slight delay between checks
+            await new Promise((resolve) => setTimeout(resolve, 300));
         }
+    
         setLoading(false);
-      };
+    };
+    
 
     return (
         <Container className="d-flex flex-column align-items-center justify-content-center min-vh-100" 
