@@ -55,24 +55,46 @@ function App() {
         let newStatuses = {};
     
         for (let i = 0; i < websitesToCheck.length; i++) {
-          const site = websitesToCheck[i];
-          try {
-            const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`, { timeout: 10000 });
+            const site = websitesToCheck[i];
+            console.log(`📢 Checking site: ${site.url}`);
     
-            if (response.data.status === "Blocked") {
-              newStatuses[site.name] = { status: "🚨 Blocked (Bitdefender)", code: response.data.error };
-            } else {
-              newStatuses[site.name] = { status: response.data.status, code: response.data.code };
+            try {
+                // ✅ Call the Puppeteer-based backend
+                const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`, { timeout: 20000 });
+    
+                console.log(`✅ Response for ${site.url}:`, response.data);
+    
+                if (response.data.status === "Blocked") {
+                    newStatuses[site.name] = {
+                        status: "❌ Blocked by Bitdefender",
+                        code: response.data.error
+                    };
+                } else if (response.data.status === "Up") {
+                    newStatuses[site.name] = {
+                        status: "✅ Online",
+                        code: response.data.code
+                    };
+                } else {
+                    newStatuses[site.name] = {
+                        status: "❌ Down",
+                        code: response.data.error || "No Response"
+                    };
+                }
+            } catch (error) {
+                console.error(`🚨 Error checking ${site.url}:`, error.message);
+                newStatuses[site.name] = {
+                    status: "⚠️ Error",
+                    code: error.message
+                };
             }
-          } catch (error) {
-            newStatuses[site.name] = { status: "⚠️ Error", code: error.message };
-          }
     
-          setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
-          await new Promise((resolve) => setTimeout(resolve, 300));
+            // Update UI with new status
+            setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
+            await new Promise((resolve) => setTimeout(resolve, 300));
         }
+    
         setLoading(false);
-      };
+    };
     return (
         <Container className="d-flex flex-column align-items-center justify-content-center min-vh-100" 
             style={{ backgroundColor: "#add8e6", padding: "20px", textAlign: "center" }}>
