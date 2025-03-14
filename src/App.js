@@ -47,17 +47,7 @@ function App() {
     const [loading, setLoading] = useState(false);
     const API_URL = "https://web-checker-slsb.onrender.com";
 
-    const simulateContactUsTrial = async (siteUrl) => {
-        try {
-          // Attempt to access the "Contact Us" page (assumed to be at siteUrl/contact)
-          const res = await axios.get(`${siteUrl}/contact`);
-          return res.status === 200;
-        } catch (error) {
-          return false;
-        }
-      };
-      
-      const checkWebsites = async () => {
+    const checkWebsites = async () => {
         setLoading(true);
         let newStatuses = {};
     
@@ -66,54 +56,45 @@ function App() {
             console.log(`📢 Checking site: ${site.url} → Requesting: ${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
     
             try {
-                // ✅ Declare response inside try block
+                // ✅ Send request to backend checker
                 const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
                 console.log(`✅ Response for ${site.url}:`, response.data);
     
-                // If the site appears "Up"
-                if (response.data.status === "Up") {
-                    // If there's an error indicating malware/blockage, perform an extra check
-                    if (
-                        response.data.error &&
-                        (response.data.error.toLowerCase().includes("bitdefender") ||
-                            response.data.error.toLowerCase().includes("malware"))
-                    ) {
-                        const contactAccessible = await simulateContactUsTrial(site.url);
-                        if (contactAccessible) {
-                            newStatuses[site.name] = {
-                                status: "✅ Online (Contact accessible)",
-                                code: response.data.code,
-                            };
-                        } else {
-                            newStatuses[site.name] = {
-                                status: "❌ Blocked (Contact inaccessible)",
-                                code: response.data.error || "No Response",
-                            };
-                        }
-                    } else {
-                        newStatuses[site.name] = {
-                            status: "✅ Online",
-                            code: response.data.code,
-                        };
-                    }
-                } else {
+                // 🚨 Detect if site is blocked (Bitdefender, malware, or firewall block)
+                if (response.data.status === "Blocked") {
                     newStatuses[site.name] = {
-                        status: "❌ Down",
-                        code: response.data.error || "No Response",
+                        status: "🚨 Blocked by Security",
+                        code: response.data.reason || "Blocked"
                     };
+                } 
+                // ✅ Site appears online
+                else if (response.data.status === "Up") {
+                    if (response.data.error &&
+                        (response.data.error.toLowerCase().includes("bitdefender") ||
+                        response.data.error.toLowerCase().includes("malware"))
+                    ) {
+                        // ⚠️ Extra security check - Try accessing "/contact" page
+                        const contactAccessible = await simulateContactUsTrial(site.url);
+                        newStatuses[site.name] = contactAccessible
+                            ? { status: "✅ Online (Contact accessible)", code: response.data.code }
+                            : { status: "❌ Blocked (Contact inaccessible)", code: response.data.error || "No Response" };
+                    } else {
+                        newStatuses[site.name] = { status: "✅ Online", code: response.data.code };
+                    }
+                } 
+                // ❌ Site is down
+                else {
+                    newStatuses[site.name] = { status: "❌ Down", code: response.data.error || "No Response" };
                 }
             } catch (error) {
                 console.error(`🚨 Error checking ${site.url}:`, error.response?.status, error.response?.data || error.message);
-                newStatuses[site.name] = {
-                    status: "⚠️ Error",
-                    code: error.message,
-                };
+                newStatuses[site.name] = { status: "⚠️ Error", code: error.message };
             }
     
-            // Update the statuses for each website iteration
+            // ✅ Update status in state
             setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
     
-            // Slight delay between checks
+            // ⏳ Small delay to prevent spam checking
             await new Promise((resolve) => setTimeout(resolve, 300));
         }
     
