@@ -47,15 +47,7 @@ function App() {
     const [loading, setLoading] = useState(false);
     const API_URL = "https://web-checker-slsb.onrender.com";
 
-    const simulateContactUsTrial = async (siteUrl) => {
-        try {
-            // Attempt to access the "Contact Us" page (assumed to be at siteUrl/contact)
-            const res = await axios.get(`${siteUrl}/contact`);
-            return res.status === 200;
-        } catch (error) {
-            return false; // If contact page is inaccessible, return false
-        }
-    };
+    
     
 
     const checkWebsites = async () => {
@@ -67,51 +59,66 @@ function App() {
             console.log(`📢 Checking site: ${site.url} → Requesting: ${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
     
             try {
-                // ✅ Send request to backend checker
+                // ✅ Request to backend
                 const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
                 console.log(`✅ Response for ${site.url}:`, response.data);
     
-                // 🚨 Detect if site is blocked (Bitdefender, malware, or firewall block)
-                if (response.data.status === "Blocked") {
-                    newStatuses[site.name] = {
-                        status: "🚨 Blocked by Security",
-                        code: response.data.reason || "Blocked"
-                    };
-                } 
-                // ✅ Site appears online
-                else if (response.data.status === "Up") {
-                    if (response.data.error &&
+                // ✅ If site is UP, check for Bitdefender malware warning
+                if (response.data.status === "Up") {
+                    if (
+                        response.data.error &&
                         (response.data.error.toLowerCase().includes("bitdefender") ||
-                        response.data.error.toLowerCase().includes("malware"))
+                         response.data.error.toLowerCase().includes("malware"))
                     ) {
-                        // ⚠️ Extra security check - Try accessing "/contact" page
-                        const contactAccessible = await simulateContactUsTrial(site.url);
-                        newStatuses[site.name] = contactAccessible
-                            ? { status: "✅ Online (Contact accessible)", code: response.data.code }
-                            : { status: "❌ Blocked (Contact inaccessible)", code: response.data.error || "No Response" };
+                        // ❌ Blocked by Bitdefender
+                        newStatuses[site.name] = {
+                            status: "❌ Blocked (Bitdefender detected)",
+                            code: response.data.error || "No Response",
+                        };
                     } else {
-                        newStatuses[site.name] = { status: "✅ Online", code: response.data.code };
+                        // ✅ Online without issues
+                        newStatuses[site.name] = {
+                            status: "✅ Online",
+                            code: response.data.code,
+                        };
                     }
-                } 
-                // ❌ Site is down
-                else {
-                    newStatuses[site.name] = { status: "❌ Down", code: response.data.error || "No Response" };
+                } else {
+                    // ❌ Site is DOWN
+                    newStatuses[site.name] = {
+                        status: "❌ Down",
+                        code: response.data.error || "No Response",
+                    };
                 }
             } catch (error) {
                 console.error(`🚨 Error checking ${site.url}:`, error.response?.status, error.response?.data || error.message);
-                newStatuses[site.name] = { status: "⚠️ Error", code: error.message };
+    
+                // ✅ Ignore generic network errors, only report Bitdefender
+                if (
+                    error.message.toLowerCase().includes("bitdefender") ||
+                    error.message.toLowerCase().includes("malware")
+                ) {
+                    newStatuses[site.name] = {
+                        status: "❌ Blocked (Bitdefender detected)",
+                        code: error.message,
+                    };
+                } else {
+                    // ✅ Do not mark as error if it's just a generic network issue
+                    newStatuses[site.name] = {
+                        status: "✅ Online (Unverified)",
+                        code: "No Bitdefender warning detected",
+                    };
+                }
             }
     
-            // ✅ Update status in state
+            // ✅ Update the statuses for each website iteration
             setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
     
-            // ⏳ Small delay to prevent spam checking
+            // ⏳ Slight delay between checks
             await new Promise((resolve) => setTimeout(resolve, 300));
         }
     
         setLoading(false);
     };
-    
 
     return (
         <Container className="d-flex flex-column align-items-center justify-content-center min-vh-100" 
