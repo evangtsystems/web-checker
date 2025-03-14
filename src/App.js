@@ -45,7 +45,7 @@ const websitesToCheck = [
 function App() {
     const [statuses, setStatuses] = useState({});
     const [loading, setLoading] = useState(false);
-    const API_URL = "https://web-checker-1.onrender.com";
+    const API_URL = "https://web-checker-slsb.onrender.com/";
 
     const simulateContactUsTrial = async (siteUrl) => {
         try {
