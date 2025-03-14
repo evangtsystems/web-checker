@@ -47,58 +47,34 @@ function App() {
     const [loading, setLoading] = useState(false);
     const API_URL = "https://web-checker-slsb.onrender.com";
 
-    
-    
-
     const checkWebsites = async () => {
-        setLoading(true);
+        setLoading(true); 
         let newStatuses = {};
-    
         for (let i = 0; i < websitesToCheck.length; i++) {
             const site = websitesToCheck[i];
-            console.log(`📢 Checking site: ${site.url}`);
-    
             try {
-                // ✅ Call the Puppeteer-based backend
-                const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`, { timeout: 20000 });
-    
-                console.log(`✅ Response for ${site.url}:`, response.data);
-    
-                if (response.data.status === "Blocked") {
-                    newStatuses[site.name] = {
-                        status: "❌ Blocked by Bitdefender",
-                        code: response.data.error
-                    };
-                } else if (response.data.status === "Up") {
-                    newStatuses[site.name] = {
-                        status: "✅ Online",
-                        code: response.data.code
-                    };
-                } else {
-                    newStatuses[site.name] = {
-                        status: "❌ Down",
-                        code: response.data.error || "No Response"
-                    };
-                }
+                const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
+                newStatuses[site.name] = response.data.status === "Up" 
+                    ? { status: "✅ Online", code: response.data.code } 
+                    : { status: "❌ Down", code: response.data.error || "No Response" };
             } catch (error) {
-                console.error(`🚨 Error checking ${site.url}:`, error.message);
-                newStatuses[site.name] = {
-                    status: "⚠️ Error",
-                    code: error.message
-                };
+                newStatuses[site.name] = { status: "⚠️ Error", code: error.message };
             }
-    
-            // Update UI with new status
+
             setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
-            await new Promise((resolve) => setTimeout(resolve, 300));
+            await new Promise((resolve) => setTimeout(resolve, 300)); 
         }
-    
         setLoading(false);
     };
+
+    useEffect(() => {
+        checkWebsites();
+    }, []);
+
     return (
         <Container className="d-flex flex-column align-items-center justify-content-center min-vh-100" 
             style={{ backgroundColor: "#add8e6", padding: "20px", textAlign: "center" }}>
-            
+
             <motion.h1 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
@@ -106,7 +82,7 @@ function App() {
             >
                 🌐 Website Status Checker
             </motion.h1>
-            
+
             <motion.div
                 initial={{ scale: 0.8 }}
                 animate={{ scale: 1 }}

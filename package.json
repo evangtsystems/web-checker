@@ -24,7 +24,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "apt-get update && apt-get install -y wget unzip && wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && dpkg -i google-chrome-stable_current_amd64.deb || apt-get install -y --fix-broken",
+    "start": "react-script start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
