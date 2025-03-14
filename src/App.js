@@ -50,54 +50,81 @@ function App() {
     
     
 
-    const checkWebsites = async () => {
-        setLoading(true);
-        let newStatuses = {};
-    
-        for (let i = 0; i < websitesToCheck.length; i++) {
-            const site = websitesToCheck[i];
-            console.log(`📢 Checking site: ${site.url} → Requesting: ${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
-    
-            try {
-                // ✅ Request to backend
-                const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
-                console.log(`✅ Response for ${site.url}:`, response.data);
-    
-                if (response.data.status === "Up") {
-                    newStatuses[site.name] = {
-                        status: "✅ Online",
-                        code: response.data.code,
-                    };
-                } else if (response.data.status === "Blocked") {
-                    newStatuses[site.name] = {
-                        status: "❌ Blocked (Bitdefender detected)",
-                        code: response.data.error,
-                    };
-                } else {
-                    newStatuses[site.name] = {
-                        status: "❌ Down",
-                        code: response.data.error || "No Response",
-                    };
-                }
-            } catch (error) {
-                console.error(`🚨 Error checking ${site.url}:`, error.response?.status, error.response?.data || error.message);
-    
-                newStatuses[site.name] = {
-                    status: "⚠️ Error",
-                    code: error.message,
-                };
-            }
-    
-            // ✅ Update statuses
-            setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
-    
-            // ⏳ Slight delay between checks
-            await new Promise((resolve) => setTimeout(resolve, 300));
+    // Attempt to fetch the site's favicon (or logo as fallback) to verify accessibility
+const scrapeImageValidation = async (siteUrl) => {
+    try {
+      const res = await axios.get(`${siteUrl}/favicon.ico`, {
+        responseType: "arraybuffer",
+        timeout: 8000,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36"
         }
-    
-        setLoading(false);
-    };
-    
+      });
+      const contentType = res.headers["content-type"];
+      if (res.status === 200 && contentType && contentType.includes("image")) {
+        return true;
+      }
+    } catch (error) {
+      // If favicon fails, try an alternative image path (like /logo.png)
+      try {
+        const res = await axios.get(`${siteUrl}/logo.png`, {
+          responseType: "arraybuffer",
+          timeout: 8000,
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36"
+          }
+        });
+        const contentType = res.headers["content-type"];
+        if (res.status === 200 && contentType && contentType.includes("image")) {
+          return true;
+        }
+      } catch (error2) {
+        return false;
+      }
+    }
+    return false;
+  };
+  
+  const checkWebsites = async () => {
+    setLoading(true);
+    let newStatuses = {};
+  
+    for (let i = 0; i < websitesToCheck.length; i++) {
+      const site = websitesToCheck[i];
+      console.log(`📢 Checking site: ${site.url} → Requesting: ${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
+      try {
+        const response = await axios.get(
+          `${API_URL}/check-site?url=${encodeURIComponent(site.url)}`,
+          { timeout: 10000 }
+        );
+        console.log(`✅ Response for ${site.url}:`, response.data);
+  
+        if (response.data.status === "Up") {
+          // Use image scraping as an extra validation
+          const imageValid = await scrapeImageValidation(site.url);
+          newStatuses[site.name] = imageValid
+            ? { status: "✅ Online", code: response.data.code }
+            : { status: "❌ Inaccessible (Image validation failed)", code: "Image scraping failed" };
+        } else {
+          newStatuses[site.name] = {
+            status: "❌ Down",
+            code: response.data.error || "No Response"
+          };
+        }
+      } catch (error) {
+        console.error(`🚨 Error checking ${site.url}:`, error.response?.status, error.response?.data || error.message);
+        newStatuses[site.name] = {
+          status: "⚠️ Error",
+          code: error.message,
+        };
+      }
+  
+      setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+    setLoading(false);
+  };
+  
 
     return (
         <Container className="d-flex flex-column align-items-center justify-content-center min-vh-100" 
