@@ -63,9 +63,14 @@ function App() {
         for (let i = 0; i < websitesToCheck.length; i++) {
           const site = websitesToCheck[i];
           try {
-            const response = await axios.get(
-              `${API_URL}/check-site?url=${encodeURIComponent(site.url)}`
-            );
+            console.log(`📢 Checking site: ${site.url} → Requesting: ${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
+try {
+  const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
+  console.log(`✅ Response for ${site.url}:`, response.data);
+} catch (error) {
+  console.error(`🚨 Error checking ${site.url}:`, error.response?.status, error.response?.data || error.message);
+}
+
       
             // If the site appears "Up"
             if (response.data.status === "Up") {
