@@ -47,6 +47,17 @@ function App() {
     const [loading, setLoading] = useState(false);
     const API_URL = "https://web-checker-slsb.onrender.com";
 
+    const simulateContactUsTrial = async (siteUrl) => {
+        try {
+            // Attempt to access the "Contact Us" page (assumed to be at siteUrl/contact)
+            const res = await axios.get(`${siteUrl}/contact`);
+            return res.status === 200;
+        } catch (error) {
+            return false; // If contact page is inaccessible, return false
+        }
+    };
+    
+
     const checkWebsites = async () => {
         setLoading(true);
         let newStatuses = {};
