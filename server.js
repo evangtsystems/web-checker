@@ -34,8 +34,9 @@ app.get("/check-site", async (req, res) => {
 
     try {
         const browser = await puppeteer.launch({
-            headless: "new",
-            args: ["--no-sandbox", "--disable-setuid-sandbox"]
+            executablePath: "/usr/bin/google-chrome-stable",
+            headless: true,
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
         });
 
         const page = await browser.newPage();
