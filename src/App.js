@@ -47,29 +47,71 @@ function App() {
     const [loading, setLoading] = useState(false);
     const API_URL = "https://web-checker-slsb.onrender.com";
 
-    const checkWebsites = async () => {
-        setLoading(true); 
+    const simulateContactUsTrial = async (siteUrl) => {
+        try {
+          // Attempt to access the "Contact Us" page (assumed to be at siteUrl/contact)
+          const res = await axios.get(`${siteUrl}/contact`);
+          return res.status === 200;
+        } catch (error) {
+          return false;
+        }
+      };
+      
+      const checkWebsites = async () => {
+        setLoading(true);
         let newStatuses = {};
         for (let i = 0; i < websitesToCheck.length; i++) {
-            const site = websitesToCheck[i];
-            try {
-                const response = await axios.get(`${API_URL}/check-site?url=${encodeURIComponent(site.url)}`);
-                newStatuses[site.name] = response.data.status === "Up" 
-                    ? { status: "✅ Online", code: response.data.code } 
-                    : { status: "❌ Down", code: response.data.error || "No Response" };
-            } catch (error) {
-                newStatuses[site.name] = { status: "⚠️ Error", code: error.message };
+          const site = websitesToCheck[i];
+          try {
+            const response = await axios.get(
+              `${API_URL}/check-site?url=${encodeURIComponent(site.url)}`
+            );
+      
+            // If the site appears "Up"
+            if (response.data.status === "Up") {
+              // If there's an error indicating malware/blockage, perform an extra check
+              if (
+                response.data.error &&
+                (response.data.error.toLowerCase().includes("bitdefender") ||
+                 response.data.error.toLowerCase().includes("malware"))
+              ) {
+                const contactAccessible = await simulateContactUsTrial(site.url);
+                if (contactAccessible) {
+                  newStatuses[site.name] = {
+                    status: "✅ Online (Contact accessible)",
+                    code: response.data.code,
+                  };
+                } else {
+                  newStatuses[site.name] = {
+                    status: "❌ Blocked (Contact inaccessible)",
+                    code: response.data.error || "No Response",
+                  };
+                }
+              } else {
+                newStatuses[site.name] = {
+                  status: "✅ Online",
+                  code: response.data.code,
+                };
+              }
+            } else {
+              newStatuses[site.name] = {
+                status: "❌ Down",
+                code: response.data.error || "No Response",
+              };
             }
-
-            setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
-            await new Promise((resolve) => setTimeout(resolve, 300)); 
+          } catch (error) {
+            newStatuses[site.name] = {
+              status: "⚠️ Error",
+              code: error.message,
+            };
+          }
+          // Update the statuses for each website iteration
+          setStatuses((prevStatuses) => ({ ...prevStatuses, ...newStatuses }));
+          // Slight delay between checks
+          await new Promise((resolve) => setTimeout(resolve, 300));
         }
         setLoading(false);
-    };
-
-    useEffect(() => {
-        checkWebsites();
-    }, []);
+      };
 
     return (
         <Container className="d-flex flex-column align-items-center justify-content-center min-vh-100" 
