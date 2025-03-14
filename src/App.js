@@ -50,26 +50,6 @@ function App() {
     
     
 
-    const detectBitdefenderBlock = async (siteUrl) => {
-        try {
-            const response = await axios.get(siteUrl, { timeout: 5000 });
-    
-            // ✅ If Bitdefender blocked it, its message is inside the HTML body
-            if (
-                response.data.toLowerCase().includes("bitdefender endpoint security tools blocked this page") ||
-                response.data.toLowerCase().includes("trojan.generickd")
-            ) {
-                console.warn(`🚨 Bitdefender Blocked: ${siteUrl}`);
-                return true;
-            }
-    
-            return false; // Site is fine
-        } catch (error) {
-            console.warn(`⚠️ Failed to check Bitdefender block: ${siteUrl}`, error.message);
-            return false; // Default to false if check fails
-        }
-    };
-    
     const checkWebsites = async () => {
         setLoading(true);
         let newStatuses = {};
@@ -84,20 +64,15 @@ function App() {
                 console.log(`✅ Response for ${site.url}:`, response.data);
     
                 if (response.data.status === "Up") {
-                    // 🔍 Extra check for Bitdefender block
-                    const isBlockedByBitdefender = await detectBitdefenderBlock(site.url);
-    
-                    if (isBlockedByBitdefender) {
-                        newStatuses[site.name] = {
-                            status: "❌ Blocked (Bitdefender detected)",
-                            code: "Bitdefender Malware Warning",
-                        };
-                    } else {
-                        newStatuses[site.name] = {
-                            status: "✅ Online",
-                            code: response.data.code,
-                        };
-                    }
+                    newStatuses[site.name] = {
+                        status: "✅ Online",
+                        code: response.data.code,
+                    };
+                } else if (response.data.status === "Blocked") {
+                    newStatuses[site.name] = {
+                        status: "❌ Blocked (Bitdefender detected)",
+                        code: response.data.error,
+                    };
                 } else {
                     newStatuses[site.name] = {
                         status: "❌ Down",

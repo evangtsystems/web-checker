@@ -5,6 +5,7 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ✅ Fix CORS to allow requests only from your frontend
 app.use(cors({
     origin: "https://web-checker-1.onrender.com",
     methods: "GET",
@@ -15,6 +16,7 @@ app.get("/", (req, res) => {
     res.send("✅ Website Monitor Backend is Running!");
 });
 
+// ✅ Check if a website is UP and detect Bitdefender blocks
 app.get("/check-site", async (req, res) => {
     const { url } = req.query;
 
@@ -23,34 +25,24 @@ app.get("/check-site", async (req, res) => {
     }
 
     try {
-        const response = await axios.get(url, { timeout: 10000 });
+        // ✅ Step 1: Perform a HEAD request to check status
+        const headResponse = await axios.head(url, { timeout: 10000 });
+        
+        // ✅ Step 2: Fetch the homepage content to detect Bitdefender
+        const pageResponse = await axios.get(url, { timeout: 10000 });
+        const pageContent = pageResponse.data.toLowerCase();
 
-        // Convert response text to string for malware detection
-        const responseData = response.data.toString().toLowerCase();
+        // ✅ Step 3: Check if Bitdefender block message is present
+        const bitdefenderBlocked = pageContent.includes("bitdefender endpoint security tools blocked this page") ||
+                                   pageContent.includes("trojan.generickd");
 
-        // Detect Malware Block Page (Bitdefender, Norton, etc.)
-        if (
-            responseData.includes("bitdefender") || 
-            responseData.includes("this page contains malware") || 
-            responseData.includes("access has been blocked") || 
-            responseData.includes("dangerous website") ||
-            responseData.includes("malware detected")
-        ) {
-            console.log(`🚨 [MALWARE WARNING] ${url} is BLOCKED by security software.`);
-            return res.json({ status: "Blocked", reason: "Detected as Malware", code: 403 });
+        if (bitdefenderBlocked) {
+            return res.json({ status: "Blocked", error: "Bitdefender Detected Malware Block" });
         }
 
-        return res.json({ status: "Up", code: response.status });
-
+        return res.json({ status: "Up", code: headResponse.status });
     } catch (error) {
-        console.error(`❌ ERROR CHECKING ${url}: ${error.message}`);
-
-        // Detect if request failed due to blocking (e.g., connection reset)
-        if (error.message.includes("ECONNRESET") || error.message.includes("403")) {
-            return res.json({ status: "Blocked", reason: "Access Denied by Security", code: 403 });
-        }
-
-        return res.json({ status: "Down or Blocked", error: error.message });
+        return res.json({ status: "Down", error: error.message });
     }
 });
 
