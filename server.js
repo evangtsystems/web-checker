@@ -24,12 +24,21 @@ app.get("/check-site", async (req, res) => {
     }
 
     try {
-        const response = await axios.head(url, { timeout: 10000 });
+        const response = await axios.get(url, {
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; WebChecker/1.0; +https://yourdomain.com)'
+            },
+            validateStatus: () => true  // Don't throw on 4xx/5xx
+        });
+
         return res.json({ status: "Up", code: response.status });
     } catch (error) {
-        return res.json({ status: "Down or Blocked", error: error.message });
+        console.error(`[ERROR] ${url} -> ${error.code || error.message}`);
+        return res.json({ status: "Down or Blocked", error: error.code || error.message });
     }
 });
+
 
 app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);
